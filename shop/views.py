@@ -9,6 +9,35 @@ from .models import Order
 
 from decimal import Decimal, ROUND_HALF_UP
 
+
+from django.db.models import Sum
+from .models import Product, Order  # ✅ Make sure these imports exist
+
+from django.db.models import Sum, F, FloatField
+from django.db.models.functions import Coalesce
+
+@login_required
+def dashboard(request):
+    products = Product.objects.all().order_by('-created_at')
+    orders = Order.objects.all()
+
+    total_products = products.count()
+    total_orders = orders.count()
+
+    # 💡 Calculate total revenue dynamically
+    total_revenue = orders.aggregate(
+        total=Coalesce(Sum(F('product__price') * F('quantity'), output_field=FloatField()), 0.0)
+    )['total']
+
+    context = {
+        'products': products,
+        'total_products': total_products,
+        'total_orders': total_orders,
+        'total_revenue': total_revenue,
+    }
+
+    return render(request, 'shop/dashboard.html', context)
+
 def product_list(request):
     products = Product.objects.all().order_by('-created_at')
     return render(request, 'shop/product_list.html', {'products': products})
@@ -47,10 +76,6 @@ class ProductForm(forms.ModelForm):
             'image': forms.ClearableFileInput(attrs={'class': 'form-control'}),
         }
 
-@login_required
-def dashboard(request):
-    products = Product.objects.all().order_by('-created_at')
-    return render(request, 'shop/dashboard.html', {'products': products})
 
 @login_required
 def add_product(request):
