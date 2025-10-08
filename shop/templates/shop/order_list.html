@@ -2,20 +2,41 @@
 {% block title %}Orders - Sangeet by Gitika{% endblock %}
 {% block content %}
 
+<style>
+  th, td { vertical-align: middle !important; }
+  .table {
+    background: #fff;
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: 0 6px 18px rgba(0, 0, 0, 0.08);
+  }
+  .order-summary {
+    background: #f8f9fa;
+    border-top: 2px solid #dee2e6;
+  }
+  .table img {
+    object-fit: cover;
+    border-radius: 8px;
+  }
+  .badge { font-size: 0.85rem; }
+</style>
+
 <div class="container py-4">
-  <h2 class="text-center mb-4">📦 Order Management</h2>
+  <div class="d-flex justify-content-between align-items-center mb-4">
+    <h2 class="fw-bold"><i class="bi bi-box-seam me-2"></i>Order Management</h2>
+  </div>
 
   {% if messages %}
     {% for message in messages %}
-      <div class="alert alert-success alert-dismissible fade show" role="alert">
-        {{ message }}
-        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-      </div>
+    <div class="alert alert-success alert-dismissible fade show" role="alert">
+      {{ message }}
+      <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
     {% endfor %}
   {% endif %}
 
-  <div class="table-responsive bg-white shadow-sm p-3 rounded">
-    <table class="table table-striped align-middle text-center mb-0">
+  <div class="table-responsive">
+    <table class="table table-hover align-middle text-center mb-0">
       <thead class="table-dark">
         <tr>
           <th>#</th>
@@ -25,7 +46,7 @@
           <th>Photo</th>
           <th>Price</th>
           <th>Qty</th>
-          <th>Total</th>
+          <th>Breakdown</th>
           <th>Date</th>
           <th>Action</th>
         </tr>
@@ -38,7 +59,7 @@
             {% if order.order_id %}
               <span class="badge bg-secondary">{{ order.order_id }}</span>
             {% else %}
-              <span class="badge bg-warning text-dark">Pending ID</span>
+              <span class="badge bg-warning text-dark">Pending</span>
             {% endif %}
           </td>
           <td>
@@ -48,35 +69,43 @@
           <td>{{ order.product.name }}</td>
           <td>
             {% if order.product.image %}
-              <img src="{{ order.product.image.url }}" alt="{{ order.product.name }}" width="60" height="60" />
+              <img src="{{ order.product.image.url }}" alt="{{ order.product.name }}" width="60" height="60">
             {% else %}
-              <img src="https://via.placeholder.com/60x60?text=No+Image" width="60" height="60" />
+              <img src="https://via.placeholder.com/60x60?text=No+Image" width="60" height="60">
             {% endif %}
           </td>
           <td>₹{{ order.product.price|floatformat:2 }}</td>
           <td>{{ order.quantity }}</td>
           <td class="text-start">
-            <strong>Subtotal:</strong> ₹{{ order.subtotal|floatformat:2 }}<br />
-            <span class="text-muted small">Tax (18%): ₹{{ order.tax|floatformat:2 }}</span><br />
-            <strong>Total:</strong> <span class="text-success fw-bold">₹{{ order.total|floatformat:2 }}</span>
+            {% comment %} Compute subtotal, tax, total same as view {% endcomment %}
+            {% with subtotal=order.product.price|floatformat:2|floatformat:2 %}
+              <div><strong>Subtotal:</strong> ₹{{ order.subtotal|floatformat:2 }}</div>
+              <div><small>Tax (18%): ₹{{ order.tax|floatformat:2 }}</small></div>
+              <div class="fw-bold text-success">Total: ₹{{ order.total|floatformat:2 }}</div>
+            {% endwith %}
           </td>
           <td>{{ order.created_at|date:"M d, Y H:i" }}</td>
           <td>
-            <!-- Delete Button triggers the modal -->
-            <button type="button" class="btn btn-danger btn-sm" data-bs-toggle="modal" data-bs-target="#deleteModal{{ order.id }}">
-              Delete
+            <!-- Delete button -->
+            <button
+              type="button"
+              class="btn btn-danger btn-sm"
+              data-bs-toggle="modal"
+              data-bs-target="#deleteModal{{ order.id }}"
+            >
+              <i class="bi bi-trash"></i>
             </button>
 
-            <!-- Modal -->
-            <div class="modal fade" id="deleteModal{{ order.id }}" tabindex="-1" aria-labelledby="deleteModalLabel{{ order.id }}" aria-hidden="true">
-              <div class="modal-dialog">
+            <!-- Delete modal -->
+            <div class="modal fade" id="deleteModal{{ order.id }}" tabindex="-1" aria-hidden="true">
+              <div class="modal-dialog modal-dialog-centered">
                 <div class="modal-content">
                   <div class="modal-header">
-                    <h5 class="modal-title" id="deleteModalLabel{{ order.id }}">Confirm Delete</h5>
+                    <h5 class="modal-title">Confirm Delete</h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                   </div>
                   <div class="modal-body">
-                    Are you sure you want to delete Order #{{ order.id }}?
+                    Are you sure you want to delete Order <strong>#{{ order.order_id }}</strong>?
                   </div>
                   <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
@@ -88,21 +117,25 @@
           </td>
         </tr>
         {% empty %}
-          <tr>
-            <td colspan="10" class="text-muted text-center py-3">No orders placed yet.</td>
-          </tr>
+        <tr>
+          <td colspan="10" class="text-muted py-4">No orders placed yet.</td>
+        </tr>
         {% endfor %}
       </tbody>
 
       {% if orders %}
       <tfoot class="order-summary">
         <tr>
-          <td colspan="7" class="text-end fw-bold">Total Tax Collected:</td>
-          <td colspan="2" class="fw-semibold text-success">₹{{ total_tax|floatformat:2 }}</td>
+          <td colspan="7" class="text-end fw-bold">Total Tax:</td>
+          <td colspan="2" class="fw-semibold text-success">
+            ₹{{ total_tax|floatformat:2 }}
+          </td>
         </tr>
         <tr>
           <td colspan="7" class="text-end fw-bold">Total Revenue (incl. Tax):</td>
-          <td colspan="2" class="fw-bold text-primary">₹{{ total_revenue|floatformat:2 }}</td>
+          <td colspan="2" class="fw-bold text-primary">
+            ₹{{ total_revenue|floatformat:2 }}
+          </td>
         </tr>
       </tfoot>
       {% endif %}

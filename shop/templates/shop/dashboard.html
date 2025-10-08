@@ -3,59 +3,120 @@
 {% block content %}
 
 <style>
-  .card {
-    border: none;
-    border-radius: 12px;
-    transition: 0.3s;
-  }
-  .card:hover {
-    transform: translateY(-5px);
-    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
-  }
-  .card-img-top {
-    height: 220px;
-    object-fit: cover;
-    border-radius: 12px 12px 0 0;
-  }
-  .summary-card {
-    border-radius: 12px;
+  /* Reusable gradient “stat” cards */
+  .stat-card { border: 0; border-radius: 16px; color: #fff; box-shadow: 0 6px 18px rgba(0,0,0,.12); }
+  .grad-purple { background: linear-gradient(135deg,#6a11cb,#2575fc); }
+  .grad-sunset { background: linear-gradient(135deg,#ff9966,#ff5e62); }
+  .grad-green  { background: linear-gradient(135deg,#11998e,#38ef7d); }
+  .stat-card .value { font-weight: 800; font-size: clamp(1.4rem, 2.5vw, 2rem); }
+  .stat-card .label { letter-spacing: .06em; opacity: .95; }
+
+  /* Product cards */
+  .product-card { border: 0; border-radius: 14px; box-shadow: 0 6px 18px rgba(0,0,0,.08); transition: transform .2s ease, box-shadow .2s ease;}
+  .product-card:hover { transform: translateY(-4px); box-shadow: 0 12px 28px rgba(0,0,0,.12);}
+  /* Keep images responsive without hard-coding height */
+  .thumb { border-radius: 14px 14px 0 0; overflow: hidden; }
+  .thumb .ratio > img { object-fit: cover; }
+
+  /* Tighten sections on small screens */
+  @media (max-width: 576px) {
+    .section-title { font-size: 1.25rem; }
   }
 </style>
 
-<!-- 🌟 Dashboard Summary Cards -->
-<div class="row g-4 mb-5 text-center">
-
-  <div class="col-md-4">
-    <div class="card border-0 text-white shadow-sm" style="background: linear-gradient(135deg, #6a11cb, #2575fc);">
-      <div class="card-body py-4">
-        <i class="bi bi-bag-fill fs-1 mb-2"></i>
-        <h6 class="text-uppercase">Total Products</h6>
-        <h2 class="fw-bold mb-0">{{ total_products }}</h2>
-      </div>
-    </div>
-  </div>
-
-  <div class="col-md-4">
-    <div class="card border-0 text-white shadow-sm" style="background: linear-gradient(135deg, #ff9966, #ff5e62);">
-      <div class="card-body py-4">
-        <i class="bi bi-box-seam-fill fs-1 mb-2"></i>
-        <h6 class="text-uppercase">Total Orders</h6>
-        <h2 class="fw-bold mb-0">{{ total_orders }}</h2>
-      </div>
-    </div>
-  </div>
-
-  <div class="col-md-4">
-    <div class="card border-0 text-white shadow-sm" style="background: linear-gradient(135deg, #11998e, #38ef7d);">
-      <div class="card-body py-4">
-        <i class="bi bi-currency-rupee fs-1 mb-2"></i>
-        <h6 class="text-uppercase">Total Revenue</h6>
-        <h2 class="fw-bold mb-0">₹{{ total_revenue|floatformat:2 }}</h2>
-      </div>
-    </div>
-  </div>
-
+<!-- Header row: title + (optional) quick action -->
+<div class="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-4">
+  <h2 class="section-title fw-bold mb-0">📊 Admin Dashboard</h2>
+  <a href="{% url 'add_product' %}" class="btn btn-primary">
+    <i class="bi bi-plus-circle me-1"></i> Add Product
+  </a>
 </div>
 
+<!-- Summary cards: responsive columns with gutters -->
+<div class="row g-4 mb-5">
+  <div class="col-12 col-md-4">
+    <div class="card stat-card grad-purple text-center">
+      <div class="card-body py-4">
+        <div class="label text-uppercase small mb-1">Total Products</div>
+        <div class="value">{{ total_products }}</div>
+      </div>
+    </div>
+  </div>
+  <div class="col-12 col-md-4">
+    <div class="card stat-card grad-sunset text-center">
+      <div class="card-body py-4">
+        <div class="label text-uppercase small mb-1">Total Orders</div>
+        <div class="value">{{ total_orders }}</div>
+      </div>
+    </div>
+  </div>
+  <div class="col-12 col-md-4">
+    <div class="card stat-card grad-green text-center">
+      <div class="card-body py-4">
+        <div class="label text-uppercase small mb-1">Total Revenue</div>
+        <div class="value">₹{{ total_revenue|floatformat:2 }}</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<h3 class="section-title mb-3">📋 Product Management</h3>
+
+<!-- Product grid:
+     row-cols-* auto-sets columns per breakpoint, g-4 = consistent spacing -->
+<div class="row row-cols-1 row-cols-sm-2 row-cols-lg-3 g-4">
+  {% for product in products %}
+  <div class="col">
+    <div class="card product-card h-100">
+      <div class="thumb">
+        <div class="ratio ratio-16x9">
+          {% if product.image %}
+            <img src="{{ product.image.url }}" alt="{{ product.name }}">
+          {% else %}
+            <img src="https://via.placeholder.com/800x450?text=No+Image" alt="No image">
+          {% endif %}
+        </div>
+      </div>
+      <div class="card-body text-center">
+        <h5 class="card-title mb-1">{{ product.name }}</h5>
+        <div class="text-muted mb-3">₹{{ product.price|floatformat:2 }}</div>
+
+        <div class="d-flex justify-content-center gap-2">
+          <a href="{% url 'edit_product' product.id %}" class="btn btn-warning btn-sm">
+            <i class="bi bi-pencil"></i> Edit
+          </a>
+
+          <!-- Delete button + modal -->
+          <button type="button" class="btn btn-danger btn-sm" data-bs-toggle="modal" data-bs-target="#deleteModal{{ product.id }}">
+            <i class="bi bi-trash"></i> Delete
+          </button>
+          <div class="modal fade" id="deleteModal{{ product.id }}" tabindex="-1" aria-hidden="true">
+            <div class="modal-dialog">
+              <div class="modal-content">
+                <div class="modal-header">
+                  <h5 class="modal-title">Confirm Delete</h5>
+                  <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                  Delete <strong>{{ product.name }}</strong>?
+                </div>
+                <div class="modal-footer">
+                  <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                  <a href="{% url 'delete_product' product.id %}" class="btn btn-danger">Yes, Delete</a>
+                </div>
+              </div>
+            </div>
+          </div>
+          <!-- /modal -->
+        </div>
+      </div>
+    </div>
+  </div>
+  {% empty %}
+  <div class="col">
+    <div class="text-center text-muted py-5">No products yet.</div>
+  </div>
+  {% endfor %}
+</div>
 
 {% endblock %}
