@@ -1,4 +1,6 @@
 from django.db import models
+import uuid
+from django.db import models
 
 class Product(models.Model):
     name = models.CharField(max_length=120)
@@ -10,14 +12,23 @@ class Product(models.Model):
     def __str__(self):
         return f"{self.name} (${self.price})"
 
+import uuid
+from django.db import models
 
 class Order(models.Model):
-    product = models.ForeignKey(Product, on_delete=models.CASCADE, related_name='orders')
+    order_id = models.CharField(max_length=12, unique=True, editable=False, null=True, blank=True)
+    product = models.ForeignKey('Product', on_delete=models.CASCADE)
     quantity = models.PositiveIntegerField(default=1)
-    customer_name = models.CharField(max_length=120)
+    customer_name = models.CharField(max_length=100)
     customer_email = models.EmailField()
     shipping_address = models.TextField()
     created_at = models.DateTimeField(auto_now_add=True)
 
+    def save(self, *args, **kwargs):
+        if not self.order_id:
+            self.order_id = f"ORD-{uuid.uuid4().hex[:8].upper()}"
+        super().save(*args, **kwargs)
+
     def __str__(self):
-        return f"Order #{self.id} - {self.product.name} x {self.quantity}"
+        return f"{self.order_id or 'NoID'} - {self.customer_name}"
+

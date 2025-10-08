@@ -2,6 +2,12 @@
 from django.shortcuts import render, get_object_or_404, redirect
 from .models import Product, Order
 from django.contrib import messages
+from decimal import Decimal
+from django.contrib.auth.decorators import login_required
+from django.shortcuts import render
+from .models import Order
+
+from decimal import Decimal, ROUND_HALF_UP
 
 def product_list(request):
     products = Product.objects.all().order_by('-created_at')
@@ -77,3 +83,42 @@ def delete_product(request, pk):
     product.delete()
     messages.success(request, 'Product deleted successfully!')
     return redirect('dashboard')
+
+
+@login_required
+def order_list(request):
+    orders = Order.objects.select_related('product').order_by('-created_at')
+
+    total_revenue = Decimal('0.00')
+    total_tax = Decimal('0.00')
+
+    # Compute per-order totals
+    for o in orders:
+        # Ensure product price and quantity exist
+        price = Decimal(o.product.price)
+        qty = Decimal(o.quantity)
+
+        o.subtotal = (price * qty).quantize(Decimal('0.01'), rounding=ROUND_HALF_UP)
+        o.tax = (o.subtotal * Decimal('0.18')).quantize(Decimal('0.01'), rounding=ROUND_HALF_UP)
+        o.total = (o.subtotal + o.tax).quantize(Decimal('0.01'), rounding=ROUND_HALF_UP)
+
+        total_revenue += o.total
+        total_tax += o.tax
+
+    # ✅ Make sure we pass all these to the template
+    context = {
+        'orders': orders,
+        'total_revenue': total_revenue,
+        'total_tax': total_tax,
+    }
+
+    return render(request, 'shop/order_list.html', context)
+from django.shortcuts import get_object_or_404, redirect
+from django.contrib import messages
+
+@login_required
+def delete_order(request, pk):
+    order = get_object_or_404(Order, pk=pk)
+    order.delete()
+    messages.success(request, "Order deleted successfully!")
+    return redirect('order_list')
